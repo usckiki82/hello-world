@@ -14,6 +14,7 @@ gen/
 out/
 [Rr]elease/
 *[Ss]ettings/
+data/
 
 ######################
 ## temporary files
