@@ -1,4 +1,4 @@
-__version__ = '0'
+__version__ = '0.0'
 
 # warning:
 # This common approach to specifying version of package has its problem:

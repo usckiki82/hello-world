@@ -26,6 +26,6 @@ setup(
         "jupyter",
         "matplotlib",
         "numpy",
-        # "seaborn",
+        "seaborn",
     ]
 )

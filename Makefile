@@ -1,6 +1,7 @@
 SHELL := /bin/bash
 
 # Note requires tab between function calls
+echo "Hello Make File"
 
 install:
 	.venv/bin/pip install .
