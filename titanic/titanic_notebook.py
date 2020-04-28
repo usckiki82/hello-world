@@ -6,18 +6,22 @@ from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import LabelEncoder
 from sklearn.ensemble import RandomForestClassifier
 
-print("TITANIC KAGGLE COMPETITION\n\n")
+PROJECT_NAME = "titanic"
 
-print("Loading data ...\n")
-path = os.path.join(".", "data", "titanic")
-print(os.path.join(path, "gender_submission.csv"))
+print(f"{PROJECT_NAME.upper()} KAGGLE COMPETITION")
 
-# gender_submission = pd.read_csv("../data/titanic/gender_submission.csv")
-# test = pd.read_csv("../data/titanic/test.csv")
-# train = pd.read_csv("../data/titanic/train.csv")
-gender_submission = pd.read_csv(os.path.join(path, "gender_submission.csv"))
-test = pd.read_csv(os.path.join(path, "test.csv"))
-train = pd.read_csv(os.path.join(path, "train.csv"))
+print("Loading data ...")
+print(os.getcwd())
+main_path = os.path.join(os.getcwd(), "..")
+print(main_path)
+data_path = os.path.join(main_path, "data", PROJECT_NAME)
+output_path = os.path.join(main_path, "output", PROJECT_NAME)
+os.mkdir(output_path)
+print(os.path.join(data_path, "gender_submission.csv"))
+
+gender_submission = pd.read_csv(os.path.join(data_path, "gender_submission.csv"))
+test = pd.read_csv(os.path.join(data_path, "test.csv"))
+train = pd.read_csv(os.path.join(data_path, "train.csv"))
 
 print(len(train))
 train.head()
@@ -64,5 +68,7 @@ y_pred_test = model.predict(X_test)
 print("Test accuracy score:", accuracy_score(y_train, y_pred_train))
 
 output = pd.DataFrame({'PassengerId': test.PassengerId, 'Survived': y_pred_test})
-output.to_csv('my_submission.csv', index=False)
+
+# Save output file
+output.to_csv(os.path.join(output_path, f'{PROJECT_NAME}_submission.csv'), index=False)
 print("Your submission was successfully saved!", len(output))
