@@ -15,7 +15,7 @@ out/
 [Rr]elease/
 *[Ss]ettings/
 data/
-# output/
+output/
 
 ######################
 ## temporary files
