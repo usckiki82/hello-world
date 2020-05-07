@@ -3,31 +3,22 @@ import seaborn as sns
 import os
 import matplotlib.pyplot as plt
 
+from titanic.titanic_functions import setup_environment
 from sklearn.metrics import accuracy_score, confusion_matrix
 from sklearn.preprocessing import LabelEncoder
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import OneHotEncoder
-
-# Screen Setup
-pd.set_option('display.max_rows', 500)
-pd.set_option('display.max_columns', 500)
-pd.set_option('display.width', 1000)
+from sklearn.model_selection import GridSearchCV
+from sklearn.pipeline import Pipeline
+from sklearn.decomposition import PCA
 
 # Setup project variables and paths
 PLOT_SHOW = False
 PROJECT_NAME = "titanic"
 
-print(f"{PROJECT_NAME.upper()} KAGGLE COMPETITION")
-
-main_path = os.path.join(os.getcwd(), "..")
-data_path = os.path.join(main_path, "data", PROJECT_NAME)
-output_path = os.path.join(main_path, "output", PROJECT_NAME)
-
-if not os.path.isdir(output_path):
-    print("Making output folder")
-    os.mkdir(output_path)
+data_path, output_path = setup_environment(PROJECT_NAME)
 
 # Load up data
 print("Loading data ...")
@@ -37,7 +28,7 @@ train = pd.read_csv(os.path.join(data_path, "train.csv"))
 
 # Data information
 class_label = "Survived"
-output_key = "PassengerId"
+target_key = "PassengerId"
 print(sorted(train.columns))
 print(sorted(submission_data.columns))
 
@@ -69,7 +60,7 @@ print("Categorical variables:")
 print(object_cols)
 
 # Get number of unique entries in each column with categorical data
-object_nunique = list(map(lambda col: X_train[col].nunique(), object_cols))
+object_nunique = list(map(lambda col: train[col].nunique(), object_cols))
 d = dict(zip(object_cols, object_nunique))
 
 # Print number of unique entries by column, in ascending order
@@ -143,7 +134,7 @@ print()
 # TODO plot histograms
 
 # Feature selection
-features = ["Pclass", "Sex_Encoded", "SibSp", "Parch", "Embarked_Encoded",] # "Cabin_Sector_Encoded"]#"Fare"] # "Age", ]#"Fare"]
+features = ["Pclass", "Sex_Encoded", "SibSp", "Parch", "Embarked_Encoded", ]  # "Cabin_Sector_Encoded"]#"Fare"] # "Age", ]#"Fare"]
 print("Selected Features: ", features)
 
 # Split data into test train
@@ -157,32 +148,54 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_ratio, 
 print("Train len:", len(X_train), "Test len:", len(X_test))
 
 # Preprocessing
-scaler = StandardScaler().fit(X_train)
+scaler = StandardScaler()
+pca = PCA()
 
 # Train model
-# TODO make this a pipeline & GridSearch parameters
 # TODO perform random forest for important features
 # TODO try semi supervised learning
 # TODO look at XGBOOST model
 
 # Setting random state forces the classifier to produce the same result in each run
-model = RandomForestClassifier(n_estimators=100, max_depth=5, random_state=random_state)
-model.fit(scaler.transform(X_train), y_train)
-y_pred_train = model.predict(scaler.transform(X_train))
-y_pred_test = model.predict(scaler.transform(X_test))
+n_cv = 5  # cv=5 is default
+scorer = "accuracy"
+# model = RandomForestClassifier(n_estimators=100, max_depth=5, random_state=random_state)
+model = RandomForestClassifier(random_state=random_state)
+pipe = Pipeline(steps=[
+    ('scaler', scaler),
+    # ('pca', pca),
+    ('model', model)
+])
+param_grid = {
+    # 'pca__n_components': [5, 15, 30, 45, 64],
+    'model__n_estimators': [10, 20, 50, 75, 100, 150, 200, 300, 500],
+    'model__max_depth': [5, 7, 9, 11, 13, 15],
+}
+
+print("\nPerforming GridSearch on pipeline")
+search = GridSearchCV(pipe, param_grid, n_jobs=-1, cv=n_cv, scoring=scorer, return_train_score=True, refit=True)
+# search.fit(X_train, y_train)
+search.fit(X, y)
+
+print("Best parameter (%s score=%0.3f):" % (search.scorer_, search.best_score_))
+print(search.best_params_)
+best_model = search.best_estimator_
+print(search.cv_results_.keys())
+print("mean_train_score: ", search.cv_results_["mean_train_score"].mean(), search.cv_results_["mean_train_score"].std())
+print("std_train_score: ", search.cv_results_["std_train_score"].mean(), search.cv_results_["std_train_score"].std())
+print("mean_test_score: ", search.cv_results_["mean_test_score"].mean(), search.cv_results_["mean_test_score"].std())
+print("std_test_score: ", search.cv_results_["std_test_score"].mean(),  search.cv_results_["std_test_score"].std())
+print()
 
 # Performance
-#  you will find that your leaderboard score tends to be 2-5% lower because
-#  the test.csv and train.csv have some major pattern differences
-tn, fp, fn, tp = confusion_matrix(y_test, y_pred_test).ravel()
-print("Train accuracy score:", accuracy_score(y_train, y_pred_train))
-print("Test accuracy score:", accuracy_score(y_test, y_pred_test))
-# print("Test accuracy2 score:", (tp + tn)/(tp + tn + fp + fn))
+print("\nResults best model fitted to all data")
+print(best_model)
+print("Train accuracy score:", accuracy_score(y, best_model.predict(X)))
 
 # Predict and Save Submission File
 X_submission = pd.get_dummies(submission_data[features])
-y_pred_submission = model.predict(scaler.transform(X_submission))
-output = pd.DataFrame({output_key: submission_data.PassengerId, class_label: y_pred_submission})
+y_pred_submission = best_model.predict(X_submission)
+output = pd.DataFrame({target_key: submission_data.PassengerId, class_label: y_pred_submission})
 
 output.to_csv(os.path.join(output_path, f'{PROJECT_NAME}_submission.csv'), index=False)
 print("Your submission output was successfully saved!", len(output))
