@@ -168,13 +168,12 @@ pipe = Pipeline(steps=[
 ])
 param_grid = {
     # 'pca__n_components': [5, 15, 30, 45, 64],
-    'model__n_estimators': [10, 20, 50, 75, 100, 150, 200, 300, 500],
-    'model__max_depth': [5, 7, 9, 11, 13, 15],
+    'model__n_estimators': [10, 20, 30, 40, 50, 60, 75, 100, 150, 200],
+    'model__max_depth': list(range(2, 15)),
 }
 
 print("\nPerforming GridSearch on pipeline")
 search = GridSearchCV(pipe, param_grid, n_jobs=-1, cv=n_cv, scoring=scorer, return_train_score=True, refit=True)
-# search.fit(X_train, y_train)
 search.fit(X, y)
 
 print("Best parameter (%s score=%0.3f):" % (search.scorer_, search.best_score_))
@@ -189,7 +188,7 @@ print()
 
 # Performance
 print("\nResults best model fitted to all data")
-print(best_model)
+# print(best_model)
 print("Train accuracy score:", accuracy_score(y, best_model.predict(X)))
 
 # Predict and Save Submission File
