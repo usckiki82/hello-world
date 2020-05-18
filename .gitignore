@@ -112,9 +112,6 @@ __pycache__
 *$py.class
 .ipynb_checkpoints
 
-# C extensions
-*.so
-
 # Distribution / packaging
 .Python
 build/
@@ -159,7 +156,6 @@ coverage.xml
 *.pot
 
 # Django stuff:
-*.log
 local_settings.py
 
 # JupyterHub:

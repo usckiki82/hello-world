@@ -1,4 +1,4 @@
-# Kaggle-Code
+# Data Folder
 
 This is the folder for adding data sets to be used in analysis.
 You need to add a folder with the project name under this data

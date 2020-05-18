@@ -28,5 +28,6 @@ setup(
         "numpy",
         "seaborn",
         "kaggle",
+        "xgboost",
     ]
 )

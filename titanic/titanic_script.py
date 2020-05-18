@@ -2,6 +2,7 @@ import pandas as pd
 import seaborn as sns
 import os
 import matplotlib.pyplot as plt
+import xgboost as xgb
 
 from titanic.titanic_functions import setup_environment
 from sklearn.metrics import accuracy_score, confusion_matrix
@@ -14,8 +15,9 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.pipeline import Pipeline
 from sklearn.decomposition import PCA
 
+
 # Setup project variables and paths
-PLOT_SHOW = False
+PLOT_SHOW = True
 PROJECT_NAME = "titanic"
 
 data_path, output_path = setup_environment(PROJECT_NAME)
@@ -142,6 +144,7 @@ test_ratio = 0.2
 random_state = 42
 y = train[class_label]
 X = pd.get_dummies(train[features])
+print(len(features), X.size)
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_ratio, random_state=random_state)
 
@@ -159,18 +162,43 @@ pca = PCA()
 # Setting random state forces the classifier to produce the same result in each run
 n_cv = 5  # cv=5 is default
 scorer = "accuracy"
+
 # model = RandomForestClassifier(n_estimators=100, max_depth=5, random_state=random_state)
-model = RandomForestClassifier(random_state=random_state)
+# model = RandomForestClassifier(random_state=random_state)
+# data_dmatrix = xgb.DMatrix(data=X, label=y)
+model = xgb.XGBClassifier()
+
 pipe = Pipeline(steps=[
     ('scaler', scaler),
     # ('pca', pca),
     ('model', model)
 ])
+
 param_grid = {
     # 'pca__n_components': [5, 15, 30, 45, 64],
-    'model__n_estimators': [10, 20, 30, 40, 50, 60, 75, 100, 150, 200],
+    'model__n_estimators': [10, 20, 30, 40, 50, 60, 75, 100, 150, 200, 300, 400, 500, 750, 1000],
+
+    # usually max_depth is 6,7,8
     'model__max_depth': list(range(2, 15)),
+
+    # learning rate is around 0.05, but small changes may make big diff
+    'model__learning_rate': [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1],
+    # 'model__subsample': list(range(2, 15)),
+
+    # tuning min_child_weight subsample colsample_bytree can fight against overfit
+    # 'model__objective': list(range(2, 15)),
+    # gamma, alpha, lambda  #finally, ensemble xgboost with multiple seeds may reduce variance
 }
+
+# brute force scan for all parameters, here are the tricks
+# parameters = {'nthread':[4], #when use hyperthread, xgboost may become slower
+#               'objective':['binary:logistic'],
+#               'min_child_weight': [11],
+#               'silent': [1],
+#               'subsample': [0.8],
+#               'colsample_bytree': [0.7],
+#               'missing':[-999],
+#               'seed': [1337]}
 
 print("\nPerforming GridSearch on pipeline")
 search = GridSearchCV(pipe, param_grid, n_jobs=-1, cv=n_cv, scoring=scorer, return_train_score=True, refit=True)
@@ -179,7 +207,7 @@ search.fit(X, y)
 print("Best parameter (%s score=%0.3f):" % (search.scorer_, search.best_score_))
 print(search.best_params_)
 best_model = search.best_estimator_
-print(search.cv_results_.keys())
+
 print("mean_train_score: ", search.cv_results_["mean_train_score"].mean(), search.cv_results_["mean_train_score"].std())
 print("std_train_score: ", search.cv_results_["std_train_score"].mean(), search.cv_results_["std_train_score"].std())
 print("mean_test_score: ", search.cv_results_["mean_test_score"].mean(), search.cv_results_["mean_test_score"].std())
@@ -190,6 +218,10 @@ print()
 print("\nResults best model fitted to all data")
 # print(best_model)
 print("Train accuracy score:", accuracy_score(y, best_model.predict(X)))
+
+xgb.plot_importance(model)
+plt.rcParams['figure.figsize'] = [5, 5]
+plt.show()
 
 # Predict and Save Submission File
 X_submission = pd.get_dummies(submission_data[features])
