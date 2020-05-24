@@ -27,7 +27,12 @@ setup(
         "matplotlib",
         "numpy",
         "seaborn",
+        "lightgbm",
         "kaggle",
         "xgboost",
+        "tensorflow",
+        "numba",
+        # "cuPy", "cuML", "cuDF",
+        # "dask",
     ]
 )
