@@ -27,9 +27,9 @@ def create_categorical_transformer(impute_strategy="most_frequent"):
     return categorical_transformer
 
 
-def create_numerical_transformer(imputer_strategy="constant"):
+def create_numerical_transformer(imputer_strategy="constant", imputer_fill_value="missing"):
     # Preprocessing for numerical data
-    numerical_transformer = SimpleImputer(strategy=imputer_strategy)
+    numerical_transformer = SimpleImputer(strategy=imputer_strategy, fill_value=imputer_fill_value)
     return numerical_transformer
 
 

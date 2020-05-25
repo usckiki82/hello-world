@@ -2,6 +2,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import operator
+
+import xgboost as xgb
 from sklearn.model_selection import learning_curve
 
 
@@ -83,15 +85,24 @@ def plot_feature_histogram(df, feature_cols, class_col="class_label", hist_check
         plt.tight_layout()
 
 
-def plot_feature_importance_xgb(model_xgb):
-    importance = model_xgb.get_fscore(map='xgb.fmap')
+# TODO perform random forest for important features
+def plot_feature_importance_xgb(model_xgb, feature_names=None):
+    if isinstance(model_xgb, xgb.XGBModel):
+        importance = model_xgb.get_booster().get_fscore()
+    else:
+        importance = model_xgb.get_fscore()
+
     importance = sorted(importance.items(), key=operator.itemgetter(1))
 
     df = pd.DataFrame(importance, columns=['feature', 'fscore'])
     df['fscore'] = df['fscore'] / df['fscore'].sum()
 
+    if (feature_names is not None) and (len(feature_names) == len(df)):
+        for f, feat_num in enumerate(df['feature']):
+            df.replace({'feature': {feat_num: feature_names[f]}}, inplace=True)
+
     plt.figure()
     df.plot()
-    df.plot(kind='barh', x='feature', y='fscores', legend=False)
+    df.plot(kind='barh', x='feature', y='fscore', legend=False)
     plt.title('Feature Importance')
     plt.xlabel('relative importance')

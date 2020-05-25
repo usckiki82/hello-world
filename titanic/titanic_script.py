@@ -10,7 +10,6 @@ import time
 from sklearn.metrics import accuracy_score, confusion_matrix
 from sklearn.preprocessing import LabelEncoder
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.model_selection import GridSearchCV
@@ -149,26 +148,20 @@ print("Selected Features: ", features)
 test_ratio = 0.2
 random_state = 42
 y = train[class_label]
-X = pd.get_dummies(train[features])
+X = train[features]
 print(len(features), X.size)
-
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_ratio, random_state=random_state)
-
-print("Train len:", len(X_train), "Test len:", len(X_test))
 
 # Preprocessing
 scaler = StandardScaler()
 pca = PCA()
 
 # Train model
-# TODO perform random forest for important features
 # TODO try semi supervised learning
 
 # Setting random state forces the classifier to produce the same result in each run
 n_cv = 5  # cv=5 is default
 scorer = "accuracy"
 
-# model = RandomForestClassifier(n_estimators=100, max_depth=5, random_state=random_state)
 # model = RandomForestClassifier(random_state=random_state)
 model = xgb.XGBClassifier()
 
@@ -223,9 +216,7 @@ print()
 print("\nResults best model fitted to all data")
 print("Train accuracy score:", accuracy_score(y, best_model.predict(X)))
 
-print(best_model)
-# xgb.plot_importance(best_model)
-plot_feature_importance_xgb(best_model.named_steps["model"].get_booster())
+plot_feature_importance_xgb(best_model.named_steps["model"], feature_names=X.columns.values)
 plt.savefig(os.path.join(output_path, f'{PROJECT_NAME}_features_importance.png'), bbox_inches='tight')
 PLOT_SHOW and plt.show()
 
