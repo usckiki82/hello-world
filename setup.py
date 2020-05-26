@@ -13,7 +13,7 @@ setup(
     name='kaggle-code',  # Required
     version="0.0.0",  # titanic.__version__,  # Required
     description='Code for practicing Kaggle Competitions',  # Required
-    long_description = long_description,
+    long_description=long_description,
     author='Christine Madden',  # Optional
     author_email="christine.m.madden19@gmail.com",
     packages=find_packages(),  # Required
@@ -27,5 +27,12 @@ setup(
         "matplotlib",
         "numpy",
         "seaborn",
+        "lightgbm",
+        "kaggle",
+        "xgboost",
+        "tensorflow",
+        "numba",
+        # "cuPy", "cuML", "cuDF",
+        # "dask",
     ]
 )
