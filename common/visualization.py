@@ -2,8 +2,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import operator
-
 import xgboost as xgb
+
 from sklearn.model_selection import learning_curve
 
 
@@ -100,6 +100,8 @@ def plot_feature_importance_xgb(model_xgb, feature_names=None):
     if (feature_names is not None) and (len(feature_names) == len(df)):
         for f, feat_num in enumerate(df['feature']):
             df.replace({'feature': {feat_num: feature_names[f]}}, inplace=True)
+    else:
+        print(set(df["feature"]))
 
     plt.figure()
     df.plot()

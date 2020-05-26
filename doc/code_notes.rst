@@ -1,6 +1,6 @@
 Feature Generation
 ==================
-*   Look at one-hot encoding categorical features since some models may not use it.
+*   Look at one-hot encoding categorical features since some models may not use cats.
 *   Change time stamp columns into separate hour, min, day etc.
 *   Look at other types of encoders like `CountEncoders`, `TargetEncoder` (only on train data),`CatBoost` (target probability calculated from rows above it)
 *   Make interaction features by adding two or more categorical columns together (`Itertools` `combination`)

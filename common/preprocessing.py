@@ -2,6 +2,7 @@ from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import OneHotEncoder
+from common.general import iterable
 
 
 def identify_categorical(train_df, verbose=True):
@@ -18,19 +19,27 @@ def identify_categorical(train_df, verbose=True):
     return categorical_cols
 
 
+# Deal with missing data fields (impute)
+# Drop columns (not desired)
+# Impute with Mean, 0 or mode
+# Impute with Mean and add column indicating imputed rows  for col in cols_with_missing:
+#     X_train_plus[col + '_was_missing'] = X_train_plus[col].isnull()
+#     X_valid_plus[col + '_was_missing'] = X_valid_plus[col].isnull()
+def create_numerical_transformer(imputer_strategy="constant", imputer_fill_value=None):
+    # Preprocessing for numerical data
+    numerical_transformer = SimpleImputer(strategy=imputer_strategy, fill_value=imputer_fill_value)
+    return numerical_transformer
+
+
+# Types of encoding:  drop columns, onehot encoding (<15 values), countencoder, targetencoder,
+# boostencoding, labelencoding()
 def create_categorical_transformer(impute_strategy="most_frequent"):
     # Preprocessing for categorical data
     categorical_transformer = Pipeline(steps=[
         ('imputer', SimpleImputer(strategy=impute_strategy)),
-        ('onehot', OneHotEncoder(handle_unknown='ignore'))
+        ('onehot', OneHotEncoder(handle_unknown='ignore', sparse=False))
     ])
     return categorical_transformer
-
-
-def create_numerical_transformer(imputer_strategy="constant", imputer_fill_value="missing"):
-    # Preprocessing for numerical data
-    numerical_transformer = SimpleImputer(strategy=imputer_strategy, fill_value=imputer_fill_value)
-    return numerical_transformer
 
 
 def create_feature_preprocessor(numerical_transformer, numerical_cols, categorical_transformer, categorical_cols):
@@ -43,3 +52,20 @@ def create_feature_preprocessor(numerical_transformer, numerical_cols, categoric
     return preprocessor
 
 
+def get_transformer_feature_names(columnTransformer):
+
+    output_features = []
+    for name, pipe, features in columnTransformer.transformers_:
+        if name!='remainder':
+            if not iterable(pipe):
+                pipe = [pipe]
+
+            for i in pipe:
+                if hasattr(i, 'categories'):
+                    trans_features = list(i.get_feature_names(features))
+                else:
+                    trans_features = list(features)
+
+            output_features = output_features + trans_features
+
+    return output_features
