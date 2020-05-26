@@ -202,8 +202,8 @@ print()
 print("\nResults best model fitted to all data")
 print("Train accuracy score:", accuracy_score(y, best_model.predict(X)))
 
-trans_features = get_transformer_feature_names(best_model.named_steps["preprocessor"])
-plot_feature_importance_xgb(best_model.named_steps["model"], feature_names=X.columns.values)
+preprocess_features = get_transformer_feature_names(best_model.named_steps["preprocessor"])
+plot_feature_importance_xgb(best_model.named_steps["model"], feature_names=preprocess_features)
 plt.savefig(os.path.join(output_path, f'{PROJECT_NAME}_features_importance.png'), bbox_inches='tight')
 PLOT_SHOW and plt.show()
 
