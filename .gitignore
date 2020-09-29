@@ -16,6 +16,7 @@ out/
 *[Ss]ettings/
 data/
 output/
+.venv
 
 ######################
 ## temporary files

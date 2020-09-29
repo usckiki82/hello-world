@@ -25,18 +25,18 @@ def identify_categorical(train_df, verbose=True):
 # Impute with Mean and add column indicating imputed rows  for col in cols_with_missing:
 #     X_train_plus[col + '_was_missing'] = X_train_plus[col].isnull()
 #     X_valid_plus[col + '_was_missing'] = X_valid_plus[col].isnull()
-def create_numerical_transformer(imputer_strategy="constant", imputer_fill_value=None):
+def create_numerical_transformer(strategy="constant", fill_value=None):
     # Preprocessing for numerical data
-    numerical_transformer = SimpleImputer(strategy=imputer_strategy, fill_value=imputer_fill_value)
+    numerical_transformer = SimpleImputer(strategy=strategy, fill_value=fill_value)
     return numerical_transformer
 
 
 # Types of encoding:  drop columns, onehot encoding (<15 values), countencoder, targetencoder,
 # boostencoding, labelencoding()
-def create_categorical_transformer(impute_strategy="most_frequent"):
+def create_categorical_transformer(strategy="most_frequent", fill_value="missing"):
     # Preprocessing for categorical data
     categorical_transformer = Pipeline(steps=[
-        ('imputer', SimpleImputer(strategy=impute_strategy)),
+        ('imputer', SimpleImputer(strategy=strategy, fill_value=fill_value)),
         ('onehot', OneHotEncoder(handle_unknown='ignore', sparse=False))
     ])
     return categorical_transformer

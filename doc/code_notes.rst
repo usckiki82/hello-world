@@ -17,7 +17,7 @@ Feature Selection
 
 Test Train Split
 ================
-*   On time series data should split in time order so that future events do not leak into the test data.
+*   Time series data should split in time order so that future events do not leak into the test data.
 *   More ways to account or test for data leakage
 *   Verify no target leakage = data included in training that would not be available at time of measurement / prediction
 *   Train test contamination by performing preprocessing steps using test or crossval data
@@ -25,7 +25,7 @@ Test Train Split
 Model Types
 ===========
 *   Try XGBoost tuning on `n_estimators` and utilizing 'early_stopping_rounds` with value like 5
-*   Try LightGBM models tuning on
+*   Try LightGBM models & tuning
 *   With pipeline, define preprocessing step as a ColumnTransformer containing numerical and categorical transformers, first imputing then encoding categorical data
 
 Submission
@@ -33,6 +33,7 @@ Submission
 *   Train on all of the data for the final model with the tuned parameters
 *   Look at semisupervised learning
 *   Look at adding submission command line wrapper function
+
 Code Improvement
 ================
 *   Fix docs for sphinx

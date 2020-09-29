@@ -96,13 +96,12 @@ def plot_feature_importance_xgb(model_xgb, feature_names=None):
     df = pd.DataFrame(importance, columns=['feature', 'fscore'])
     df['fscore'] = df['fscore'] / df['fscore'].sum()
 
-
     if (feature_names is not None) :
-        if (len(feature_names) == len(df)):
+        if (len(feature_names) != len(df)):
             print("# features different between model & submission, assuming indexing...")
             print("# inputted:", len(feature_names), ", # model:", len(df))
         for f, feat_num in enumerate(df['feature']):
-            print(feat_num)
+
             df.replace({'feature': {feat_num: feature_names[int(feat_num[1:])]}}, inplace=True)
     else:
         print(df["feature"])

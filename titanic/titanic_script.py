@@ -64,15 +64,6 @@ numerical_cols = list(train.columns.values)
 numerical_cols = list(np.setdiff1d(numerical_cols, categorical_cols))
 print("Numeric columns:", numerical_cols)
 
-cols_encode = ["Sex", "Embarked", "Cabin_Sector"]
-
-# numeric encoding
-for encode in cols_encode:
-    le = LabelEncoder()
-    le.fit(train[encode].astype("str"))
-    train[encode + "_Encoded"] = le.transform(train[encode].astype("str"))
-    submission_data[encode + "_Encoded"] = le.transform(submission_data[encode].astype("str"))
-
 # Handle Missing Data (Impute)
 print("\nHandling missing data...")
 # Number of missing values in each column of training data
@@ -80,8 +71,8 @@ missing_val_count_by_column = (train.isnull().sum())
 print(missing_val_count_by_column[missing_val_count_by_column > 0])
 
 # Create Preprocessing Transformers
-categorical_transformer = create_categorical_transformer(impute_strategy="most_frequent")
-numerical_transformer = create_numerical_transformer(imputer_strategy="constant", imputer_fill_value=None)
+categorical_transformer = create_categorical_transformer(strategy="most_frequent")  #most_frequent
+numerical_transformer = create_numerical_transformer(strategy="constant", fill_value=None)  #strategy constant, none
 
 # Feature generation
 #TODO exponential combination
@@ -121,14 +112,12 @@ PLOT_SHOW and plt.show()
 # Feature Selection
 # select_features_num = ["Parch", "Pclass", "SibSp",]
 # select_features_cat = ["Sex", "Embarked",]
-select_features_num = ["Age", "Fare", "Parch", "Pclass", "SibSp",]
-select_features_cat = ["Sex", "Embarked", "Cabin_Sector",]
+select_features_num = ["Parch", "Pclass", "SibSp", ]  #Age #"Fare",
+select_features_cat = ["Sex", "Embarked",]# "Cabin_Sector",]
 select_features = select_features_num + select_features_cat
 print("Selected Features: ", select_features)
 
-# Split data into test train
-# test_ratio = 0.2
-# random_state = 42
+# Define Model Training Inputs
 y = train[class_label]
 X = train[select_features]
 
@@ -147,6 +136,7 @@ scorer = "accuracy"
 
 # model = RandomForestClassifier(random_state=random_state)
 model = xgb.XGBClassifier()
+# model = lgb.LGBMClassifier()
 
 pipe = Pipeline(steps=[
     ('preprocessor', preprocessor),
@@ -156,10 +146,11 @@ pipe = Pipeline(steps=[
 ])
 
 param_grid = {
-    # 'preprocessor__num__imputer__strategy': ['mean', 'median'],
+    'preprocessor__num__strategy': ['mean', 'median', 'most_frequent', 'constant'],
+    'preprocessor__cat__imputer__strategy': ['constant', 'most_frequent'],
 
     # 'pca__n_components': [5, 15, 30, 45, 64],
-    'model__n_estimators': [10, 50, 75, 100, 125, 200, 300],
+    'model__n_estimators': [10, 50, 75, 100, 125, 200],
 
     # usually max_depth is 6,7,8
     'model__max_depth': list(range(2, 10)),
@@ -167,6 +158,8 @@ param_grid = {
     # learning rate is around 0.05, but small changes may make big diff
     'model__learning_rate': [0.03, 0.05, 0.07, 0.09, 0.1],
     # 'model__subsample':  list(map(lambda x: x * 0.1, range(1, 10))),
+    # "model__early_stopping_rounds": 10,
+    # "model__verbose": False,
 
     # 'model__colsample_bytree': list(map(lambda x: x * 0.1, range(1, 15))),
     # 'model__min_child_weight': list(range(1, 15)),
@@ -182,15 +175,21 @@ param_grid = {
 #               'missing':[-999],
 #               'seed': [1337]}
 
+fit_params = {
+                # "xgbrg__eval_set": [(val_X, val_y)],
+                "xgbrg__early_stopping_rounds": 10,
+                "xgbrg__verbose": False}
+
 print("\nPerforming GridSearch on pipeline")
 search = GridSearchCV(pipe, param_grid, n_jobs=-1, cv=n_cv, scoring=scorer, return_train_score=True, refit=True,
                       verbose=1)
-search.fit(X, y)
+search.fit(X, y)  #, fit_params=fit_params)
+best_model = search.best_estimator_
 
-print("Selected Features: ", select_features)
+print("\nSelected Features: ", select_features)
 print("Best parameter (%s score=%0.3f):" % (search.scorer_, search.best_score_))
 print(search.best_params_)
-best_model = search.best_estimator_
+print(best_model.named_steps["model"])
 
 print("mean_train_score: ", search.cv_results_["mean_train_score"].mean(), search.cv_results_["mean_train_score"].std())
 print("std_train_score: ", search.cv_results_["std_train_score"].mean(), search.cv_results_["std_train_score"].std())
