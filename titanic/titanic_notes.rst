@@ -8,6 +8,7 @@ Feature Generation
 *  Identify categorical columns -> Impute (fill nans with most frequent)
 *  Encode categorical columns -> one hot encoder
 *  Tried impute with extension -> did not yield a better result
+*  Best result to date is with cat imputer = most frequent, num = mean
 
 *  ToDo
 *   Look at other types of encoders like `CountEncoders`, `TargetEncoder` (only on train data),`CatBoost` (target probability calculated from rows above it)
@@ -24,10 +25,10 @@ Feature Selection
 
 Model Training
 ~~~~~~~~~~~~~~
-*  Scale and preprocess using techniques above
-*  Implemented LightGBM model & tuning -> Slight performance boost
+*  Scale and preprocess features using techniques above
+*  Implemented LightGBM model & tuning -> Slight performance boost over random forest
 *  Implemented XGBoost with tuning -> Similar result to LightGBM
-
+*  Current best result (mean train 0.826, mean test 0.791, submit 0.778) with
 
 Other ToDos
 ~~~~~~~~~~~

@@ -30,7 +30,8 @@ setup(
         "lightgbm",
         "kaggle",
         "xgboost",
-        "tensorflow",
+        "graphviz",  # Also have to download graphviz package and add dot program folder to path
+        # "tensorflow",  #need <1.19.0 on numpy
         "numba",
         # "cuPy", "cuML", "cuDF",
         # "dask",

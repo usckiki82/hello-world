@@ -16,7 +16,7 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.pipeline import Pipeline
 from sklearn.decomposition import PCA
 
-from titanic.titanic_functions import setup_environment
+from common.general import setup_environment
 from common.preprocessing import identify_categorical, create_categorical_transformer, create_feature_preprocessor
 from common.preprocessing import create_numerical_transformer, get_transformer_feature_names
 from common.visualization import plot_feature_histogram, plot_feature_importance_xgb
@@ -51,8 +51,8 @@ print("\nPreprocessing data ...")
 # Clean up existing columns
 train["Cabin_Sector"] = train["Cabin"].astype(str).str[0]
 submission_data["Cabin_Sector"] = submission_data["Cabin"].astype(str).str[0]
-print(sorted(train["Cabin_Sector"].unique()))
-print(submission_data["Cabin_Sector"].unique())
+print("Cabin_Sector (train) ", sorted(train["Cabin_Sector"].unique()))
+print("Cabin_Sector (sub) ",submission_data["Cabin_Sector"].unique())
 
 train["Cabin_Locale"] = train["Cabin"].astype(str).str[1:]
 submission_data["Cabin_Locale"] = submission_data["Cabin"].astype(str).str[1:]
@@ -150,18 +150,17 @@ param_grid = {
     'preprocessor__cat__imputer__strategy': ['constant', 'most_frequent'],
 
     # 'pca__n_components': [5, 15, 30, 45, 64],
-    'model__n_estimators': [10, 50, 75, 100, 125, 200],
+
+    # model parameters
+    'model__n_estimators': [10, 50, 75, 100, 125],  #100
 
     # usually max_depth is 6,7,8
-    'model__max_depth': list(range(2, 10)),
+    'model__max_depth': list(range(2, 10)),  #2
 
     # learning rate is around 0.05, but small changes may make big diff
-    'model__learning_rate': [0.03, 0.05, 0.07, 0.09, 0.1],
-    # 'model__subsample':  list(map(lambda x: x * 0.1, range(1, 10))),
-    # "model__early_stopping_rounds": 10,
-    # "model__verbose": False,
+    'model__learning_rate': [0.03, 0.05, 0.07, 0.09, 0.1],  #0.07
 
-    # 'model__colsample_bytree': list(map(lambda x: x * 0.1, range(1, 15))),
+    # 'model__colsample_bytree': list(map(lambda x: x * 0.1, range(1, 15))),  #1
     # 'model__min_child_weight': list(range(1, 15)),
     # tuning min_child_weight subsample colsample_bytree can fight against overfit
     # 'model__objective': list(range(2, 15)),
@@ -176,14 +175,14 @@ param_grid = {
 #               'seed': [1337]}
 
 fit_params = {
-                # "xgbrg__eval_set": [(val_X, val_y)],
-                "xgbrg__early_stopping_rounds": 10,
-                "xgbrg__verbose": False}
+                # "model__eval_set": [(val_X, val_y)],
+                # "model__early_stopping_rounds": 10,
+                "model__verbose": False}
 
 print("\nPerforming GridSearch on pipeline")
 search = GridSearchCV(pipe, param_grid, n_jobs=-1, cv=n_cv, scoring=scorer, return_train_score=True, refit=True,
                       verbose=1)
-search.fit(X, y)  #, fit_params=fit_params)
+search.fit(X, y, **fit_params)
 best_model = search.best_estimator_
 
 print("\nSelected Features: ", select_features)
@@ -201,9 +200,19 @@ print()
 print("\nResults best model fitted to all data")
 print("Train accuracy score:", accuracy_score(y, best_model.predict(X)))
 
+#  PLOT PERFORMANCE
 preprocess_features = get_transformer_feature_names(best_model.named_steps["preprocessor"])
+print("\nFeature values:")
+for i, f in enumerate(preprocess_features):
+    print(f"f{i}={f}")
+
 plot_feature_importance_xgb(best_model.named_steps["model"], feature_names=preprocess_features)
 plt.savefig(os.path.join(output_path, f'{PROJECT_NAME}_features_importance.png'), bbox_inches='tight')
+PLOT_SHOW and plt.show()
+
+plt.figure(figsize=(20, 15))
+xgb.plot_tree(best_model.named_steps["model"], ax=plt.gca())
+plt.savefig(os.path.join(output_path, f'{PROJECT_NAME}_tree_plot.png'), bbox_inches='tight')
 PLOT_SHOW and plt.show()
 
 # CREATE OUTPUT FILE
