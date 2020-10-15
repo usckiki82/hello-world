@@ -11,10 +11,10 @@ from sklearn.metrics import accuracy_score, confusion_matrix
 from sklearn.preprocessing import LabelEncoder
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import StandardScaler
-from sklearn.preprocessing import OneHotEncoder
 from sklearn.model_selection import GridSearchCV
 from sklearn.pipeline import Pipeline
 from sklearn.decomposition import PCA
+from sklearn.model_selection import train_test_split
 
 from common.general import setup_environment
 from common.preprocessing import identify_categorical, create_categorical_transformer, create_feature_preprocessor
@@ -36,6 +36,7 @@ print("Loading data ...")
 gender_submission = pd.read_csv(os.path.join(data_path, "gender_submission.csv"))
 submission_data = pd.read_csv(os.path.join(data_path, "test.csv"))
 train = pd.read_csv(os.path.join(data_path, "train.csv"))
+print("Dataset has {} entries and {} features".format(*train.shape))
 
 # Define key labels
 class_label = "Survived"
@@ -110,8 +111,6 @@ PLOT_SHOW and plt.show()
 
 # TRAIN MODEL PIPELINE
 # Feature Selection
-# select_features_num = ["Parch", "Pclass", "SibSp",]
-# select_features_cat = ["Sex", "Embarked",]
 select_features_num = ["Parch", "Pclass", "SibSp", ]  #Age #"Fare",
 select_features_cat = ["Sex", "Embarked",]# "Cabin_Sector",]
 select_features = select_features_num + select_features_cat
@@ -123,7 +122,7 @@ X = train[select_features]
 
 # Preprocessing
 scaler = StandardScaler()
-# pca = PCA()
+pca = PCA()
 preprocessor = create_feature_preprocessor(numerical_transformer, select_features_num, categorical_transformer,
                                            select_features_cat)
 
@@ -152,19 +151,15 @@ param_grid = {
     # 'pca__n_components': [5, 15, 30, 45, 64],
 
     # model parameters
-    'model__n_estimators': [10, 50, 75, 100, 125],  #100
-
-    # usually max_depth is 6,7,8
-    'model__max_depth': list(range(2, 10)),  #2
-
-    # learning rate is around 0.05, but small changes may make big diff
-    'model__learning_rate': [0.03, 0.05, 0.07, 0.09, 0.1],  #0.07
-
-    # 'model__colsample_bytree': list(map(lambda x: x * 0.1, range(1, 15))),  #1
-    # 'model__min_child_weight': list(range(1, 15)),
-    # tuning min_child_weight subsample colsample_bytree can fight against overfit
+    'model__n_estimators': [10, 50, 75, 100],  #75
+    'model__max_depth': list(range(2, 7)),  #3
+    'model__learning_rate': [0.01, 0.03, 0.05, 0.07],  #0.01
+    'model__colsample_bytree': [i/10. for i in range(5, 9, 2)],  #0.7
+    'model__min_child_weight': list(range(5, 8)),   #7
+    'model__subsample': [i/10. for i in range(5, 11, 2)],  #0.9
     # 'model__objective': list(range(2, 15)),
     # gamma, alpha, lambda  #finally, ensemble xgboost with multiple seeds may reduce variance
+    'model__seed': [42],
 }
 
 # brute force scan for all parameters, here are the tricks
@@ -174,8 +169,17 @@ param_grid = {
 #               'missing':[-999],
 #               'seed': [1337]}
 
+# X, X_test, y, y_test = train_test_split(X, y, test_size=0.1, random_state=42)
+# temp_preprocessor = preprocessor.fit(X)
+# X_temp = temp_preprocessor.transform(X)
+# X_test = temp_preprocessor.transform(X_test)
+# temp_scaler = scaler.fit(X)
+# X_test = temp_scaler.transform(X_test)
+# print("X_test:", X_test.shape, " X:", X.shape)
 fit_params = {
-                # "model__eval_set": [(val_X, val_y)],
+                'model__eval_metric': "mae",
+                # "model__num_boost_round": 999,
+                # "model__eval_set": [(X_test, y_test)],
                 # "model__early_stopping_rounds": 10,
                 "model__verbose": False}
 
@@ -221,5 +225,5 @@ y_pred_submission = best_model.predict(X_submission)
 output = pd.DataFrame({target_key: submission_data.PassengerId, class_label: y_pred_submission})
 
 output.to_csv(os.path.join(output_path, f'{PROJECT_NAME}_submission.csv'), index=False)
-print("Your submission output was successfully saved!", len(output))
+print("\nYour submission output was successfully saved!", len(output))
 print("Program Duration: ", time.time() - start_time)

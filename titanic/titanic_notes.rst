@@ -28,7 +28,14 @@ Model Training
 *  Scale and preprocess features using techniques above
 *  Implemented LightGBM model & tuning -> Slight performance boost over random forest
 *  Implemented XGBoost with tuning -> Similar result to LightGBM
-*  Current best result (mean train 0.826, mean test 0.791, submit 0.778) with
+*  XGB Tuning Parameters
+    - parameter is called `num_boost_round` and corresponds to the number of boosting rounds or trees to build
+    - `early_stopping_round` when to stop if performance haven’t improved for num rounds specified
+    - `max_depth` is the maximum number of nodes allowed from the root to the farthest leaf of a tree
+    - `min_child_weight` is the minimum weight (or number of samples if all samples have a weight of 1) required in order to create a new node in the tree
+    - `subsample corresponds` to the fraction of observations (the rows) to subsample at each step
+    - `colsample_bytree` corresponds to the fraction of features (the columns) to use
+    - The `ETA` parameter controls the learning rate
 
 Other ToDos
 ~~~~~~~~~~~
