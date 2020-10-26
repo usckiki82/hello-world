@@ -5,11 +5,15 @@ import matplotlib.pyplot as plt
 import xgboost as xgb
 import lightgbm as lgb
 import numpy as np
+import featuretools as ft
+import featuretools.variable_types as vtypes
 import time
 
 from sklearn.metrics import accuracy_score, confusion_matrix
 from sklearn.preprocessing import LabelEncoder
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
+from sklearn.tree import DecisionTreeClassifier
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import GridSearchCV
 from sklearn.pipeline import Pipeline
@@ -53,10 +57,13 @@ print("\nPreprocessing data ...")
 train["Cabin_Sector"] = train["Cabin"].astype(str).str[0]
 submission_data["Cabin_Sector"] = submission_data["Cabin"].astype(str).str[0]
 print("Cabin_Sector (train) ", sorted(train["Cabin_Sector"].unique()))
-print("Cabin_Sector (sub) ",submission_data["Cabin_Sector"].unique())
+print("Cabin_Sector (sub) ", submission_data["Cabin_Sector"].unique())
 
 train["Cabin_Locale"] = train["Cabin"].astype(str).str[1:]
 submission_data["Cabin_Locale"] = submission_data["Cabin"].astype(str).str[1:]
+
+train["Sex"] = train.Sex.apply(lambda x: 0.0 if x == "female" else 1.0)
+submission_data["Sex"] = submission_data.Sex.apply(lambda x: 0.0 if x == "female" else 1.0)
 
 # Identify and characterize categorical variables
 s = (train.dtypes == 'object')
@@ -76,7 +83,26 @@ categorical_transformer = create_categorical_transformer(strategy="most_frequent
 numerical_transformer = create_numerical_transformer(strategy="constant", fill_value=None)  #strategy constant, none
 
 # Feature generation
-#TODO exponential combination
+print("\nGenerating features ...")
+print(numerical_cols)
+f_name = "total_family"
+numerical_cols.append(f_name)
+train[f_name] = train["SibSp"] + train["Parch"]
+submission_data[f_name] = submission_data["SibSp"] + submission_data["Parch"]
+
+col_names = numerical_cols.copy()
+col_names.remove("Survived")
+
+for col in col_names:
+    f_name = col + "_cbrt"
+    print(f_name)
+    numerical_cols.append(f_name)
+    train[f_name] = np.cbrt(train[col])
+    submission_data[f_name] = np.cbrt(submission_data[col])
+
+print("New cols:", numerical_cols)
+
+#TODO combination
 #TODO automated feature generation
 #TODO Explore differences between train data and submission data
 
@@ -88,19 +114,18 @@ print(train.describe())
 print("\nSUBMISSION")
 print(submission_data.describe())
 
-women = train.loc[train.Sex == 'female'][class_label]
-rate_women = sum(women)/len(women)
+rate_women = (len(train.Sex) - sum(train.Sex))/len(train.Sex)
 print("\n% of women who survived:", rate_women)
-men = train.loc[train.Sex == 'male'][class_label]
-rate_men = sum(men)/len(men)
+rate_men = sum(train.Sex)/len(train.Sex)
 print("% of men who survived:", rate_men)
 print(len(train[train[class_label] == 1]), len(train[train[class_label] == 0]))
 
 # Plot data
+print("\nPlotting data...")
 sns.set(style="ticks", color_codes=True)
 g_train = sns.pairplot(train, diag_kind="hist", hue="Survived")
 plt.tight_layout()
-SAVE_DATA and plt.savefig(os.path.join(output_path, f'{PROJECT_NAME}_features_pairplot.png'), bbox_inches='tight')
+SAVE_DATA and plt.savefig(os.path.join(output_path, f'{PROJECT_NAME}_allfeatures_pairplot.png'), bbox_inches='tight')
 PLOT_SHOW and plt.show()
 print()
 
@@ -111,8 +136,8 @@ PLOT_SHOW and plt.show()
 
 # TRAIN MODEL PIPELINE
 # Feature Selection
-select_features_num = ["Parch", "Pclass", "SibSp", ]  #Age #"Fare",
-select_features_cat = ["Sex", "Embarked",]# "Cabin_Sector",]
+select_features_num = ["Pclass", "total_family", ] # "Age", "Fare", ]  # "SibSp", "Parch",]
+select_features_cat = ["Sex", "Embarked", ]#"Cabin_Sector",]
 select_features = select_features_num + select_features_cat
 print("Selected Features: ", select_features)
 
@@ -132,10 +157,12 @@ preprocessor = create_feature_preprocessor(numerical_transformer, select_feature
 # Setting random state forces the classifier to produce the same result in each run
 n_cv = 5  # cv=5 is default
 scorer = "accuracy"
-
+# model = LDA()
+# model = DecisionTreeClassifier()
 # model = RandomForestClassifier(random_state=random_state)
 model = xgb.XGBClassifier()
 # model = lgb.LGBMClassifier()
+
 
 pipe = Pipeline(steps=[
     ('preprocessor', preprocessor),
@@ -151,9 +178,10 @@ param_grid = {
     # 'pca__n_components': [5, 15, 30, 45, 64],
 
     # model parameters
-    'model__n_estimators': [10, 50, 75, 100],  #75
+    # XGBOOST
+    'model__n_estimators': [25, 50, 75, 100, 125],  #75
     'model__max_depth': list(range(2, 7)),  #3
-    'model__learning_rate': [0.01, 0.03, 0.05, 0.07],  #0.01
+    'model__learning_rate': [0.01, 0.03, 0.05, 0.07, 0.09],  #0.01
     'model__colsample_bytree': [i/10. for i in range(5, 9, 2)],  #0.7
     'model__min_child_weight': list(range(5, 8)),   #7
     'model__subsample': [i/10. for i in range(5, 11, 2)],  #0.9
@@ -162,12 +190,6 @@ param_grid = {
     'model__seed': [42],
 }
 
-# brute force scan for all parameters, here are the tricks
-# parameters = {'nthread':[4], #when use hyperthread, xgboost may become slower
-#               'objective':['binary:logistic'],
-#               'silent': [1],
-#               'missing':[-999],
-#               'seed': [1337]}
 
 # X, X_test, y, y_test = train_test_split(X, y, test_size=0.1, random_state=42)
 # temp_preprocessor = preprocessor.fit(X)
@@ -178,9 +200,9 @@ param_grid = {
 # print("X_test:", X_test.shape, " X:", X.shape)
 fit_params = {
                 'model__eval_metric': "mae",
-                # "model__num_boost_round": 999,
+                # "model__num_boost_round": 999,  #  todo need to do this a separate training
                 # "model__eval_set": [(X_test, y_test)],
-                # "model__early_stopping_rounds": 10,
+                # "model__early_stopping_rounds": 10,  # todo need to do this as separate training
                 "model__verbose": False}
 
 print("\nPerforming GridSearch on pipeline")

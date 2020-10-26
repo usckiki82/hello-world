@@ -36,6 +36,8 @@ Model Training
     - `subsample corresponds` to the fraction of observations (the rows) to subsample at each step
     - `colsample_bytree` corresponds to the fraction of features (the columns) to use
     - The `ETA` parameter controls the learning rate
+*ToDo
+    - Based on erfitting try dbasic models, decision tree and logistic
 
 Other ToDos
 ~~~~~~~~~~~
