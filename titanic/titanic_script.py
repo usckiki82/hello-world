@@ -136,7 +136,7 @@ PLOT_SHOW and plt.show()
 
 # TRAIN MODEL PIPELINE
 # Feature Selection
-select_features_num = ["Pclass", "total_family", "Sex"] # "Age", "Fare", ]  # "SibSp", "Parch",]
+select_features_num = ["Pclass", "SibSp", "Parch", "Sex"] # "Age", "Fare", ]  # "total_family", "SibSp", "Parch",]
 select_features_cat = ["Embarked", "Cabin_Sector",]
 select_features = select_features_num + select_features_cat
 print("Selected Features: ", select_features)
