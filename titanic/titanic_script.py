@@ -136,8 +136,8 @@ PLOT_SHOW and plt.show()
 
 # TRAIN MODEL PIPELINE
 # Feature Selection
-select_features_num = ["Pclass", "total_family", ] # "Age", "Fare", ]  # "SibSp", "Parch",]
-select_features_cat = ["Sex", "Embarked", ]#"Cabin_Sector",]
+select_features_num = ["Pclass", "total_family", "Sex"] # "Age", "Fare", ]  # "SibSp", "Parch",]
+select_features_cat = ["Embarked", "Cabin_Sector",]
 select_features = select_features_num + select_features_cat
 print("Selected Features: ", select_features)
 
@@ -175,7 +175,7 @@ param_grid = {
     'preprocessor__num__strategy': ['mean', 'median', 'most_frequent', 'constant'],
     'preprocessor__cat__imputer__strategy': ['constant', 'most_frequent'],
 
-    # 'pca__n_components': [5, 15, 30, 45, 64],
+    # 'pca__n_components': [9, 10, 11, 12],
 
     # model parameters
     # XGBOOST
@@ -203,7 +203,8 @@ fit_params = {
                 # "model__num_boost_round": 999,  #  todo need to do this a separate training
                 # "model__eval_set": [(X_test, y_test)],
                 # "model__early_stopping_rounds": 10,  # todo need to do this as separate training
-                "model__verbose": False}
+                "model__verbose": False
+}
 
 print("\nPerforming GridSearch on pipeline")
 search = GridSearchCV(pipe, param_grid, n_jobs=-1, cv=n_cv, scoring=scorer, return_train_score=True, refit=True,

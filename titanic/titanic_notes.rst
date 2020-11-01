@@ -17,11 +17,12 @@ Feature Generation
 
 Feature Selection
 ~~~~~~~~~~~~~~~~~
+* Tried PCA with default values but created a performance drop
+* Completed code to display feature importances out of xgboost
 * ToDo
-*   Implement features selection functions like `selecKbest` with `fclassif` scorer
-*   Or L1 regularization using `LogisticRegression` with regularization set to 1 or 0.1, and using `SelectFromModel`
-*   Or `RandomForest` prioritization
-
+    -  Implement features selection functions like `selecKbest` with `fclassif` scorer
+    -  Or L1 regularization using `LogisticRegression` with regularization set to 1 or 0.1, and using `SelectFromModel`
+    - Why does "Fare" and "Age" show up as most important parameters, but causes overfitting?
 
 Model Training
 ~~~~~~~~~~~~~~
@@ -36,8 +37,9 @@ Model Training
     - `subsample corresponds` to the fraction of observations (the rows) to subsample at each step
     - `colsample_bytree` corresponds to the fraction of features (the columns) to use
     - The `ETA` parameter controls the learning rate
-*ToDo
-    - Based on erfitting try dbasic models, decision tree and logistic
+*  Tried LDA and decision tree models but resulted in lower performance
+*Todo   - Add steps to retrain on all data as final step
+*-
 
 Other ToDos
 ~~~~~~~~~~~
