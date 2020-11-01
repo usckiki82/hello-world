@@ -84,7 +84,15 @@ numerical_transformer = create_numerical_transformer(strategy="constant", fill_v
 
 # Feature generation
 print("\nGenerating features ...")
-print(numerical_cols)
+
+# Feature Selection
+select_features_num = ["Pclass", "total_family", "Sex",]  # "Age", "Fare", ]  # "SibSp", "Parch",]
+select_features_cat = ["Embarked", "Cabin_Sector",]
+select_features = select_features_num + select_features_cat
+print("Selected Features: ", select_features)
+
+# Hand generate features
+print("\nHand Generated Features")
 f_name = "total_family"
 numerical_cols.append(f_name)
 train[f_name] = train["SibSp"] + train["Parch"]
@@ -100,11 +108,37 @@ for col in col_names:
     train[f_name] = np.cbrt(train[col])
     submission_data[f_name] = np.cbrt(submission_data[col])
 
-print("New cols:", numerical_cols)
+print("Hand gen cols:", numerical_cols)
 
-#TODO combination
-#TODO automated feature generation
+# Create FeatureTools entity set for automatic feature generation
+# https://medium.com/dataexplorations/tool-review-can-featuretools-simplify-the-process-of-feature-engineering-5d165100b0c3
+variable_types = { 'PassengerId': vtypes.Categorical,
+      'Sex': vtypes.Categorical,
+      'Pclass': vtypes.Categorical,
+      'Embarked': vtypes.Categorical}
+es = ft.EntitySet(id='Survivors')
+es.entity_from_dataframe(entity_id='Passengers', dataframe=train[select_features + ["PassengerId"]], index='PassengerId',
+                         variable_types=variable_types)
+es = es.normalize_entity(base_entity_id='Passengers', new_entity_id='Pclass', index='Pclass')
+print("FeatureTools input cols: ", es["Passengers"].variables)
+feature_matrix, feature_names = ft.dfs(entityset=es, target_entity='Passengers', max_depth=3, verbose=3, n_jobs=1)
+feature_matrix_enc, features_enc = ft.encode_features(feature_matrix, feature_names, include_unknown=False)
+print("FeatureTools gen features:", feature_matrix_enc.columns)
+
+# perform same for submission
+es_tst = ft.EntitySet(id='Survivors')
+es_tst.entity_from_dataframe(entity_id='Passengers', dataframe=submission_data[select_features + ["PassengerId"]],
+                             index='PassengerId')
+es_tst = es_tst.normalize_entity(base_entity_id='Passengers', new_entity_id='Pclass', index='Pclass')
+feature_matrix_tst = ft.calculate_feature_matrix(features=features_enc, entityset=es_tst)
+
+#TODO combo
 #TODO Explore differences between train data and submission data
+
+# Define Model Training Inputs
+y = train[class_label]
+X = train[select_features]
+X_submission = submission_data[select_features]
 
 # FEATURE REPORTING
 # Print Data
@@ -135,16 +169,6 @@ SAVE_DATA and plt.savefig(os.path.join(output_path, f'{PROJECT_NAME}_features_hi
 PLOT_SHOW and plt.show()
 
 # TRAIN MODEL PIPELINE
-# Feature Selection
-select_features_num = ["Pclass", "SibSp", "Parch", "Sex"] # "Age", "Fare", ]  # "total_family", "SibSp", "Parch",]
-select_features_cat = ["Embarked", "Cabin_Sector",]
-select_features = select_features_num + select_features_cat
-print("Selected Features: ", select_features)
-
-# Define Model Training Inputs
-y = train[class_label]
-X = train[select_features]
-
 # Preprocessing
 scaler = StandardScaler()
 pca = PCA()
@@ -226,6 +250,7 @@ print()
 # MEASURE PERFORMANCE
 print("\nResults best model fitted to all data")
 print("Train accuracy score:", accuracy_score(y, best_model.predict(X)))
+print("Confusion Matrix:", confusion_matrix(y, best_model.predict(X)))
 
 #  PLOT PERFORMANCE
 preprocess_features = get_transformer_feature_names(best_model.named_steps["preprocessor"])
@@ -243,7 +268,6 @@ plt.savefig(os.path.join(output_path, f'{PROJECT_NAME}_tree_plot.png'), bbox_inc
 PLOT_SHOW and plt.show()
 
 # CREATE OUTPUT FILE
-X_submission = submission_data[select_features]
 y_pred_submission = best_model.predict(X_submission)
 output = pd.DataFrame({target_key: submission_data.PassengerId, class_label: y_pred_submission})
 
