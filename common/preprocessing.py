@@ -7,14 +7,15 @@ from common.general import iterable
 
 def identify_categorical(train_df, verbose=True):
     # Identify and characterize categorical variables
-    s = (train_df.dtypes == 'object')
-    categorical_cols = list(s[s].index)
+    objs = (train_df.dtypes == 'object')
+    categorical_cols = list(objs[objs].index)
     verbose and print("Categorical columns:", categorical_cols)
 
     # Get number of unique entries in each column with categorical data
-    categorical_nunique = list(map(lambda col: train_df[col].nunique(), categorical_cols))
-    d = dict(zip(categorical_cols, categorical_nunique))
-    verbose and print("Unique values:", sorted(d.items(), key=lambda x: x[1]))
+    categorical_nunique = list(map(lambda col: train_df[col].nunique(),
+                                   categorical_cols))
+    cat_dict = dict(zip(categorical_cols, categorical_nunique))
+    verbose and print("Unique values:", sorted(cat_dict.items(), key=lambda x: x[1]))
 
     return categorical_cols
 
@@ -30,7 +31,6 @@ def create_numerical_transformer(strategy="constant", fill_value=None):
     numerical_transformer = SimpleImputer(strategy=strategy, fill_value=fill_value)
     return numerical_transformer
 
-
 # Types of encoding:  drop columns, onehot encoding (<15 values), countencoder, targetencoder,
 # boostencoding, labelencoding()
 def create_categorical_transformer(strategy="most_frequent", fill_value="missing"):
@@ -42,7 +42,8 @@ def create_categorical_transformer(strategy="most_frequent", fill_value="missing
     return categorical_transformer
 
 
-def create_feature_preprocessor(numerical_transformer, numerical_cols, categorical_transformer, categorical_cols):
+def create_feature_preprocessor(numerical_transformer, numerical_cols, categorical_transformer,
+                                categorical_cols):
     # Bundle preprocessing for numerical and categorical data
     preprocessor = ColumnTransformer(
         transformers=[
@@ -52,10 +53,10 @@ def create_feature_preprocessor(numerical_transformer, numerical_cols, categoric
     return preprocessor
 
 
-def get_transformer_feature_names(columnTransformer):
+def get_transformer_feature_names(column_transformer):
 
     output_features = []
-    for name, pipe, features in columnTransformer.transformers_:
+    for name, pipe, features in column_transformer.transformers_:
         if name!='remainder':
             if not iterable(pipe):
                 pipe = [pipe]

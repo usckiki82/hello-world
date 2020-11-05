@@ -19,6 +19,7 @@ setup(
     packages=find_packages(),  # Required
     install_requires=[
         "setuptools",
+        "pylint",
         "wheel",
         "sklearn",
         "scipy",

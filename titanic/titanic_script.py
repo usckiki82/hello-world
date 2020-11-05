@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import xgboost as xgb
 import lightgbm as lgb
 import numpy as np
+from copy import deepcopy
 import featuretools as ft
 import featuretools.variable_types as vtypes
 import time
@@ -50,14 +51,15 @@ print("Train cols:", sorted(train.columns))
 print(train.info())
 print(train.head())
 
-# DATA PREPROCESSING
-print("\nPreprocessing data ...")
+# DATA CLEANING
+print("\n\nCleaning data ...")
 
 # Clean up existing columns
 train["Cabin_Sector"] = train["Cabin"].astype(str).str[0]
 submission_data["Cabin_Sector"] = submission_data["Cabin"].astype(str).str[0]
 print("Cabin_Sector (train) ", sorted(train["Cabin_Sector"].unique()))
 print("Cabin_Sector (sub) ", submission_data["Cabin_Sector"].unique())
+# todo fill in cabin sector based on class
 
 train["Cabin_Locale"] = train["Cabin"].astype(str).str[1:]
 submission_data["Cabin_Locale"] = submission_data["Cabin"].astype(str).str[1:]
@@ -66,7 +68,6 @@ train["Sex"] = train.Sex.apply(lambda x: 0.0 if x == "female" else 1.0)
 submission_data["Sex"] = submission_data.Sex.apply(lambda x: 0.0 if x == "female" else 1.0)
 
 # Identify and characterize categorical variables
-s = (train.dtypes == 'object')
 categorical_cols = identify_categorical(train)
 numerical_cols = list(train.columns.values)
 numerical_cols = list(np.setdiff1d(numerical_cols, categorical_cols))
@@ -78,15 +79,12 @@ print("\nHandling missing data...")
 missing_val_count_by_column = (train.isnull().sum())
 print(missing_val_count_by_column[missing_val_count_by_column > 0])
 
-# Create Preprocessing Transformers
-categorical_transformer = create_categorical_transformer(strategy="most_frequent")  #most_frequent
-numerical_transformer = create_numerical_transformer(strategy="constant", fill_value=None)  #strategy constant, none
 
 # Feature generation
 print("\nGenerating features ...")
 
 # Feature Selection
-select_features_num = ["Pclass", "total_family", "Sex",]  # "Age", "Fare", ]  # "SibSp", "Parch",]
+select_features_num = ["Pclass", "total_family", "Sex", ] # "Age", "Fare", "SibSp", "Parch"]
 select_features_cat = ["Embarked", "Cabin_Sector",]
 select_features = select_features_num + select_features_cat
 print("Selected Features: ", select_features)
@@ -120,25 +118,21 @@ es = ft.EntitySet(id='Survivors')
 es.entity_from_dataframe(entity_id='Passengers', dataframe=train[select_features + ["PassengerId"]], index='PassengerId',
                          variable_types=variable_types)
 es = es.normalize_entity(base_entity_id='Passengers', new_entity_id='Pclass', index='Pclass')
-print("FeatureTools input cols: ", es["Passengers"].variables)
+print("\nFeatureTools input cols: ", es["Passengers"].variables)
 feature_matrix, feature_names = ft.dfs(entityset=es, target_entity='Passengers', max_depth=3, verbose=3, n_jobs=1)
-feature_matrix_enc, features_enc = ft.encode_features(feature_matrix, feature_names, include_unknown=False)
-print("FeatureTools gen features:", feature_matrix_enc.columns)
+# feature_matrix_enc, features_enc = ft.encode_features(feature_matrix, feature_names, include_unknown=False)
+print("FeatureTools gen features:", feature_matrix.columns)
 
 # perform same for submission
 es_tst = ft.EntitySet(id='Survivors')
 es_tst.entity_from_dataframe(entity_id='Passengers', dataframe=submission_data[select_features + ["PassengerId"]],
                              index='PassengerId')
 es_tst = es_tst.normalize_entity(base_entity_id='Passengers', new_entity_id='Pclass', index='Pclass')
-feature_matrix_tst = ft.calculate_feature_matrix(features=features_enc, entityset=es_tst)
+feature_matrix_tst = ft.calculate_feature_matrix(features=feature_names, entityset=es_tst)
 
-#TODO combo
+#TODO feature combos?
 #TODO Explore differences between train data and submission data
-
-# Define Model Training Inputs
-y = train[class_label]
-X = train[select_features]
-X_submission = submission_data[select_features]
+# TODO try semi supervised learning
 
 # FEATURE REPORTING
 # Print Data
@@ -168,16 +162,32 @@ plot_feature_histogram(train, numerical_cols, class_col=class_label, hist_check_
 SAVE_DATA and plt.savefig(os.path.join(output_path, f'{PROJECT_NAME}_features_histograms.png'), bbox_inches='tight')
 PLOT_SHOW and plt.show()
 
+# Define Model Training Inputs
+y = train[class_label]
+X = train[select_features]
+X_submission = submission_data[select_features]
+# X = feature_matrix.copy()
+# X_submission = feature_matrix_tst.copy()
+
+X_features_cat = identify_categorical(X)
+X_features_num = list(X.columns)
+X_features_num = [str(f) for f in np.setdiff1d(X_features_num, X_features_cat)]
+
+print(f"\nInput {len(X.columns)} features: ", X.columns)
+print("Numeric columns:", X_features_num)
+print("Categorical columns:", X_features_cat)
+
+
 # TRAIN MODEL PIPELINE
-# Preprocessing
+# Preprocessing Transformers
+categorical_transformer = create_categorical_transformer(strategy="most_frequent")  #most_frequent
+numerical_transformer = create_numerical_transformer(strategy="constant", fill_value=None)  #strategy constant, none
+preprocessor = create_feature_preprocessor(numerical_transformer, X_features_num, categorical_transformer,
+                                           X_features_cat)
 scaler = StandardScaler()
 pca = PCA()
-preprocessor = create_feature_preprocessor(numerical_transformer, select_features_num, categorical_transformer,
-                                           select_features_cat)
 
 # Train model
-# TODO try semi supervised learning
-
 # Setting random state forces the classifier to produce the same result in each run
 n_cv = 5  # cv=5 is default
 scorer = "accuracy"
@@ -236,7 +246,7 @@ search = GridSearchCV(pipe, param_grid, n_jobs=-1, cv=n_cv, scoring=scorer, retu
 search.fit(X, y, **fit_params)
 best_model = search.best_estimator_
 
-print("\nSelected Features: ", select_features)
+print("\nSelected Features: ", X.columns)
 print("Best parameter (%s score=%0.3f):" % (search.scorer_, search.best_score_))
 print(search.best_params_)
 print(best_model.named_steps["model"])
@@ -250,7 +260,33 @@ print()
 # MEASURE PERFORMANCE
 print("\nResults best model fitted to all data")
 print("Train accuracy score:", accuracy_score(y, best_model.predict(X)))
-print("Confusion Matrix:", confusion_matrix(y, best_model.predict(X)))
+print("Train confusion Matrix (tn, fp, fn, tp):", confusion_matrix(y, best_model.predict(X)).ravel())
+
+# # Perform final fit
+# X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1, random_state=42)
+# fit_params = {
+#                 'model__eval_metric': "mae",
+#                 # "model__num_boost_round": 999,  #  todo need to do this a separate training
+#                 "model__eval_set": [(X_test, y_test)],
+#                 "model__early_stopping_rounds": 10,  # todo need to do this as separate training
+#                 "model__verbose": False
+# }
+# pipe_trf = Pipeline(pipe.steps[:-1])
+# pipe_trf = pipe_trf.fit(pd.DataFrame(X_train))
+# fit_params['model__eval_set'] = [(pipe_trf.transform(pd.DataFrame(X_train)),
+#                                  pd.DataFrame(y_train)),
+#                                 (pipe_trf.transform(pd.DataFrame(X_test)),
+#                                  pd.DataFrame(y_test))]
+# final_model = deepcopy(best_model)
+# print(final_model)
+# final_model.fit(X_train, y_train, **fit_params)
+
+# # MEASURE PERFORMANCE
+# print("\nResults best model fitted w/refit parameters")
+# print("Train accuracy score:", accuracy_score(y_train, final_model.predict(X_train)))
+# print("Train confusion Matrix (tn, fp, fn, tp):", confusion_matrix(y_train, final_model.predict(X_train)).ravel())
+# print("Train accuracy score:", accuracy_score(y, final_model.predict(X_test)))
+# print("Train confusion Matrix (tn, fp, fn, tp):", confusion_matrix(y_test, final_model.predict(X_test)).ravel())
 
 #  PLOT PERFORMANCE
 preprocess_features = get_transformer_feature_names(best_model.named_steps["preprocessor"])
