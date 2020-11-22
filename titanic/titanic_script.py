@@ -164,10 +164,19 @@ PLOT_SHOW and plt.show()
 
 # Define Model Training Inputs
 y = train[class_label]
-X = train[select_features]
-X_submission = submission_data[select_features]
-# X = feature_matrix.copy()
-# X_submission = feature_matrix_tst.copy()
+X = feature_matrix.copy()
+X_submission = feature_matrix_tst.copy()
+
+# Threshold for removing correlated variables
+threshold = 0.7
+# Absolute value correlation matrix
+corr_matrix = X.corr().abs()
+upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(np.bool))
+# Select columns with correlations above threshold
+collinear_features = [column for column in upper.columns if any(upper[column] > threshold)]
+print(f"Dropping collinear features > {threshold} ", collinear_features)
+X = X.drop(columns=collinear_features)
+X_submission = X_submission.drop(columns=collinear_features)
 
 X_features_cat = identify_categorical(X)
 X_features_num = list(X.columns)
